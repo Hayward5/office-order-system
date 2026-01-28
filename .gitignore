@@ -1,0 +1,35 @@
+# Node/Vite
+node_modules/
+dist/
+.vite/
+coverage/
+
+# Environment files (do not commit secrets)
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editors/OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Google Apps Script / clasp (local-only)
+.clasp.json
+.clasprc.json
+.claspignore
+
+# OhMyOpenCode / Sisyphus local state
+.sisyphus/notepads/
+.sisyphus/drafts/
+.sisyphus/boulder.json

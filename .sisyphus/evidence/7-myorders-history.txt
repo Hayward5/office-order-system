@@ -1,0 +1,19 @@
+Date: 2026-01-28
+
+Command: getMyOrders (drink)
+curl -L "{WEB_APP_URL}?action=getMyOrders&userName=Alice&orderSessionId=OS20260128230040D8726"
+
+Response:
+{"success":true,"data":[{"orderId":3,"productName":"紅茶","size":"中杯","sugar":"半糖","ice":"少冰","note":"","price":30,"createdAt":"2026-01-28T23:01:37+08:00","status":"active"}],"totalAmount":30}
+
+Command: getMyOrders (meal)
+curl -L "{WEB_APP_URL}?action=getMyOrders&userName=Alice&orderSessionId=OS20260128230044M5012"
+
+Response:
+{"success":true,"data":[{"orderId":4,"productName":"招牌便當","size":"","sugar":"","ice":"","note":"less rice","price":100,"createdAt":"2026-01-28T23:01:42+08:00","status":"active"}],"totalAmount":100}
+
+Command: getOrderSessions
+curl -L "{WEB_APP_URL}?action=getOrderSessions&userName=Alice"
+
+Response:
+{"success":true,"data":[{"orderSessionId":"OS20260128225632D0CC0","storeType":"drink","createdAt":"2026-01-28T22:58:34+08:00"},{"orderSessionId":"OS20260128225638MD0CA","storeType":"meal","createdAt":"2026-01-28T22:58:40+08:00"},{"orderSessionId":"OS20260128230040D8726","storeType":"drink","createdAt":"2026-01-28T23:01:37+08:00"},{"orderSessionId":"OS20260128230044M5012","storeType":"meal","createdAt":"2026-01-28T23:01:42+08:00"}]}
