@@ -1,3 +1,19 @@
+// 啟動初始化
+function runSetup() {
+  const scriptProperties = PropertiesService.getScriptProperties();
+  
+  // 注意：Key 名稱必須與你在後台設定的一模一樣（包含大小寫）
+  const spreadsheetId = scriptProperties.getProperty('SpreadsheetId'); 
+  
+  if (!spreadsheetId) {
+    console.error("錯誤：抓不到 SpreadsheetId。請檢查 Script properties 中的 Key 名稱是否正確。");
+    return;
+  }
+  
+  // 呼叫寫好的初始化函數
+  initSpreadsheet(spreadsheetId);
+}
+
 const SHEETS_SCHEMA = [
   {
     name: 'Config',

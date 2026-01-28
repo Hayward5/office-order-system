@@ -21,8 +21,37 @@
 - 部署與手動 QA 文件
 
 尚待完成（需要實際部署與資料）：
-- 端到端手動驗收（需 GAS Web App URL + Sheets 實際資料）
-- 最終驗收證據（curl/log）
+- 前端 UI 端到端手動驗收（用真實 GAS + Sheets 資料跑一輪，補 UI 截圖證據）
+- GitHub Pages 實際部署驗證（確認資產不 404、hash 路由可直開/refresh）
+- 若要正式上線：將測試資料替換為正式店家/品項，必要時清理 Orders/CurrentOrder
+
+---
+
+## 最新完成與驗證（2026-01-28）
+
+本次已完成/已驗證（以 curl 對已部署的 GAS Web App 實測）：
+- [x] 新建 Google Sheet，並已初始化 schema（tabs + headers + Config defaults）
+- [x] GAS Web App 已部署（任何人可存取），`action=ping` 回 JSON
+- [x] 管理者登入：`adminLogin` 可取得 `adminToken`（6 小時）
+- [x] 管理者上傳：`uploadData` 可 upsert `Stores` / `Products`
+- [x] 開/關單：`openOrder` 可同時開 drink + meal；`closeOrder` 後 submit/update 會拒絕（`SESSION_CLOSED`）
+- [x] 使用者流程：`getCurrentOrders` / `getProducts` / `submitOrder` / `updateOrder` / `cancelOrder` / `getMyOrders` / `getOrderSessions`
+- [x] 統計/匯出：`getStatistics` / `exportOrders` 回傳與 Orders 資料一致
+- [x] 失敗案例驗證：飲料選項不在 option set → `INVALID_OPTION`
+- [x] 失敗案例驗證：便當備註過長 → `NOTE_TOO_LONG`
+- [x] 失敗案例驗證：管理 API 缺 token → `MISSING_TOKEN`
+
+證據檔案（本 repo 內）：
+- `.sisyphus/evidence/2-gas-ping.txt`
+- `.sisyphus/evidence/4-current-products.txt`
+- `.sisyphus/evidence/5-submitOrder.txt`
+- `.sisyphus/evidence/7-myorders-history.txt`
+- `.sisyphus/evidence/8-stats-export.txt`
+- `.sisyphus/evidence/10-final-checklist.txt`
+
+操作注意事項（常見踩雷）：
+- GAS Web App 常見 302 redirect；curl 請用 `-L`
+- 不要在 `-L` 同時硬指定 `-X POST`（redirect 後可能變 405）；用 `--data` 讓 curl 自行處理即可
 
 ---
 
@@ -207,11 +236,10 @@ bash scripts/seed-data.sh
 
 ## 接下來要做什麼（給下一個 AI/工程師）
 
-1. 建立或綁定 Google Sheet，完成 schema 初始化（`docs/sheets-schema.md`）。
-2. 在 Apps Script 設定 Script Properties（SpreadsheetId / AdminPassword / TokenSecret）。
-3. 部署 GAS Web App（AnyOne 可存取），取得 URL。
-4. 設定前端 `.env.local`（VITE_API_BASE_URL）。
-5. 依 `docs/manual-qa.md` 跑 curl 驗證並補齊驗收證據。
+1. 設定前端 `.env.local` 的 `VITE_API_BASE_URL` 指向你的 GAS Web App `.../exec`（不要 commit `.env.local`）。
+2. `npm install && npm run dev`，用 UI 跑一輪：輸入姓名 → 選 drink/meal → 下單 → 我的訂單 → 統計 → admin 登入/開關/上傳/匯出。
+3. 補齊 UI 證據截圖（依 `.sisyphus/plans/office-order-system.md` 的要求，存到 `.sisyphus/evidence/`）。
+4. 部署到 GitHub Pages 並驗證：資產不 404、hash 路由可用（含 refresh/直開）。
 
 ---
 
