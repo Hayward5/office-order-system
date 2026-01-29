@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { apiConfigured, apiGet, apiPost } from '../services/api'
 
 const userName = ref(localStorage.getItem('officeOrderUser') || '')
@@ -212,6 +212,10 @@ onMounted(async () => {
   await loadSessions()
   await loadCurrentSessions()
 })
+
+watch(selectedSessionId, async () => {
+  await loadOrders()
+}, { immediate: true })
 </script>
 
 <template>
@@ -253,7 +257,6 @@ onMounted(async () => {
           <select
             v-model="selectedSessionId"
             class="rounded-menu border border-cocoa/15 bg-paper px-3 py-2 text-sm text-ink"
-            @change="loadOrders"
           >
             <option value="" disabled>選擇場次</option>
             <option v-for="session in sessions" :key="session.orderSessionId" :value="session.orderSessionId">
