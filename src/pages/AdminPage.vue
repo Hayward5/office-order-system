@@ -7,31 +7,39 @@ const adminToken = ref(sessionStorage.getItem('officeOrderAdminToken') || '')
 const adminExpiresAt = ref(Number(sessionStorage.getItem('officeOrderAdminTokenExp')) || 0)
 const statusMessage = ref('')
 
+const loginLoading = ref(false)
+
 const uploadType = ref('store')
 const uploadFormat = ref('csv')
 const uploadData = ref('')
 const uploadStatus = ref('')
+const uploadLoading = ref(false)
 
 const openStoreId = ref('')
 const openStoreType = ref('drink')
 const openAdminName = ref('')
 const openStatus = ref('')
+const openLoading = ref(false)
 
 const stores = ref([])
 const storeListStatus = ref('')
+const storesLoading = ref(false)
 
 const closeSessionId = ref('')
 const closeStoreType = ref('')
 const closeStatus = ref('')
+const closeLoading = ref(false)
 
 const toggleType = ref('store')
 const toggleId = ref('')
 const toggleActive = ref('TRUE')
 const toggleStatus = ref('')
+const toggleLoading = ref(false)
 
 const exportSessionId = ref('')
 const exportStatus = ref('')
 const exportResult = ref('')
+const exportLoading = ref(false)
 
 const isLoggedIn = computed(() => {
   if (!adminToken.value) {
@@ -51,6 +59,14 @@ function logout() {
 
   stores.value = []
   storeListStatus.value = ''
+
+  loginLoading.value = false
+  storesLoading.value = false
+  uploadLoading.value = false
+  openLoading.value = false
+  closeLoading.value = false
+  toggleLoading.value = false
+  exportLoading.value = false
 }
 
 async function loadStores() {
@@ -65,28 +81,33 @@ async function loadStores() {
     return
   }
 
+  storesLoading.value = true
   storeListStatus.value = '載入店家中...'
-  const response = await apiPost('getStores', {
-    adminToken: adminToken.value,
-    storeType: openStoreType.value
-  })
+  try {
+    const response = await apiPost('getStores', {
+      adminToken: adminToken.value,
+      storeType: openStoreType.value
+    })
 
-  if (response && response.success) {
-    const rawStores = Array.isArray(response.data) ? response.data : []
-    stores.value = rawStores.filter((store) => store && store.storeId)
+    if (response && response.success) {
+      const rawStores = Array.isArray(response.data) ? response.data : []
+      stores.value = rawStores.filter((store) => store && store.storeId)
 
-    const activeStores = stores.value.filter((store) => store && store.isActive)
-    const selected = stores.value.find((store) => store && store.storeId === openStoreId.value)
-    if (!selected || !selected.isActive) {
-      openStoreId.value = activeStores[0]?.storeId || ''
+      const activeStores = stores.value.filter((store) => store && store.isActive)
+      const selected = stores.value.find((store) => store && store.storeId === openStoreId.value)
+      if (!selected || !selected.isActive) {
+        openStoreId.value = activeStores[0]?.storeId || ''
+      }
+
+      storeListStatus.value = `已載入 ${stores.value.length} 家店` + (activeStores.length ? '' : '（目前無可開單店家）')
+      return
     }
 
-    storeListStatus.value = `已載入 ${stores.value.length} 家店` + (activeStores.length ? '' : '（目前無可開單店家）')
-    return
+    stores.value = []
+    storeListStatus.value = response?.error?.message || '載入店家失敗'
+  } finally {
+    storesLoading.value = false
   }
-
-  stores.value = []
-  storeListStatus.value = response?.error?.message || '載入店家失敗'
 }
 
 async function login() {
@@ -94,91 +115,120 @@ async function login() {
     statusMessage.value = 'API 尚未設定，無法登入。'
     return
   }
+  loginLoading.value = true
   statusMessage.value = '登入中...'
-  const response = await apiPost('adminLogin', { password: password.value })
-  if (response && response.success) {
-    adminToken.value = response.adminToken
-    adminExpiresAt.value = Date.now() + Number(response.expiresIn || 0) * 1000
-    sessionStorage.setItem('officeOrderAdminToken', adminToken.value)
-    sessionStorage.setItem('officeOrderAdminTokenExp', String(adminExpiresAt.value))
-    statusMessage.value = '登入成功'
-
-    return
+  try {
+    const response = await apiPost('adminLogin', { password: password.value })
+    if (response && response.success) {
+      adminToken.value = response.adminToken
+      adminExpiresAt.value = Date.now() + Number(response.expiresIn || 0) * 1000
+      sessionStorage.setItem('officeOrderAdminToken', adminToken.value)
+      sessionStorage.setItem('officeOrderAdminTokenExp', String(adminExpiresAt.value))
+      statusMessage.value = '登入成功'
+      return
+    }
+    statusMessage.value = response?.error?.message || '登入失敗'
+  } finally {
+    loginLoading.value = false
   }
-  statusMessage.value = response?.error?.message || '登入失敗'
 }
 
 async function upload() {
+  uploadLoading.value = true
   uploadStatus.value = '上傳中...'
-  const response = await apiPost('uploadData', {
-    adminToken: adminToken.value,
-    dataType: uploadType.value,
-    format: uploadFormat.value,
-    data: uploadData.value
-  })
-  if (response && response.success) {
-    uploadStatus.value = `完成：新增 ${response.insertedCount} 筆，更新 ${response.updatedCount} 筆`
-    return
+  try {
+    const response = await apiPost('uploadData', {
+      adminToken: adminToken.value,
+      dataType: uploadType.value,
+      format: uploadFormat.value,
+      data: uploadData.value
+    })
+    if (response && response.success) {
+      uploadStatus.value = `完成：新增 ${response.insertedCount} 筆，更新 ${response.updatedCount} 筆`
+      return
+    }
+    uploadStatus.value = response?.error?.message || '上傳失敗'
+  } finally {
+    uploadLoading.value = false
   }
-  uploadStatus.value = response?.error?.message || '上傳失敗'
 }
 
 async function openOrder() {
+  openLoading.value = true
   openStatus.value = '開單中...'
-  const response = await apiPost('openOrder', {
-    adminToken: adminToken.value,
-    storeId: openStoreId.value,
-    storeType: openStoreType.value,
-    adminName: openAdminName.value
-  })
-  if (response && response.success) {
-    openStatus.value = `已開單：${response.orderSessionId}`
-    return
+  try {
+    const response = await apiPost('openOrder', {
+      adminToken: adminToken.value,
+      storeId: openStoreId.value,
+      storeType: openStoreType.value,
+      adminName: openAdminName.value
+    })
+    if (response && response.success) {
+      openStatus.value = `已開單：${response.orderSessionId}`
+      return
+    }
+    openStatus.value = response?.error?.message || '開單失敗'
+  } finally {
+    openLoading.value = false
   }
-  openStatus.value = response?.error?.message || '開單失敗'
 }
 
 async function closeOrder() {
+  closeLoading.value = true
   closeStatus.value = '關單中...'
-  const response = await apiPost('closeOrder', {
-    adminToken: adminToken.value,
-    orderSessionId: closeSessionId.value,
-    storeType: closeStoreType.value
-  })
-  if (response && response.success) {
-    closeStatus.value = '已關單'
-    return
+  try {
+    const response = await apiPost('closeOrder', {
+      adminToken: adminToken.value,
+      orderSessionId: closeSessionId.value,
+      storeType: closeStoreType.value
+    })
+    if (response && response.success) {
+      closeStatus.value = '已關單'
+      return
+    }
+    closeStatus.value = response?.error?.message || '關單失敗'
+  } finally {
+    closeLoading.value = false
   }
-  closeStatus.value = response?.error?.message || '關單失敗'
 }
 
 async function toggle() {
+  toggleLoading.value = true
   toggleStatus.value = '更新中...'
-  const response = await apiPost('toggleActive', {
-    adminToken: adminToken.value,
-    type: toggleType.value,
-    id: toggleId.value,
-    isActive: toggleActive.value
-  })
-  if (response && response.success) {
-    toggleStatus.value = '狀態已更新'
-    return
+  try {
+    const response = await apiPost('toggleActive', {
+      adminToken: adminToken.value,
+      type: toggleType.value,
+      id: toggleId.value,
+      isActive: toggleActive.value
+    })
+    if (response && response.success) {
+      toggleStatus.value = '狀態已更新'
+      return
+    }
+    toggleStatus.value = response?.error?.message || '更新失敗'
+  } finally {
+    toggleLoading.value = false
   }
-  toggleStatus.value = response?.error?.message || '更新失敗'
 }
 
 async function exportOrders() {
+  exportLoading.value = true
   exportStatus.value = '匯出中...'
-  const response = await apiPost('exportOrders', {
-    adminToken: adminToken.value,
-    orderSessionId: exportSessionId.value
-  })
-  if (response && response.success) {
-    exportResult.value = JSON.stringify(response.data || [], null, 2)
-    exportStatus.value = '匯出完成'
-    return
+  try {
+    const response = await apiPost('exportOrders', {
+      adminToken: adminToken.value,
+      orderSessionId: exportSessionId.value
+    })
+    if (response && response.success) {
+      exportResult.value = JSON.stringify(response.data || [], null, 2)
+      exportStatus.value = '匯出完成'
+      return
+    }
+    exportStatus.value = response?.error?.message || '匯出失敗'
+  } finally {
+    exportLoading.value = false
   }
-  exportStatus.value = response?.error?.message || '匯出失敗'
 }
 
 watch(openStoreType, async () => {
@@ -226,13 +276,19 @@ watch(
             type="password"
             placeholder="管理者密碼"
             class="rounded-menu border border-cocoa/15 bg-paper/90 px-3 py-2 text-sm text-ink focus:border-cocoa/50 focus:outline-none"
+            :disabled="loginLoading"
           />
           <button
             type="button"
             class="rounded-menu bg-saffron px-4 py-2 text-sm font-bold text-cocoa shadow-paper"
+            :class="loginLoading ? 'opacity-70 cursor-not-allowed' : ''"
+            :disabled="loginLoading"
             @click="login"
           >
-            登入
+            <span class="inline-flex items-center gap-2">
+              <span v-if="loginLoading" class="h-4 w-4 rounded-full border-2 border-cocoa/25 border-t-cocoa animate-spin"></span>
+              登入
+            </span>
           </button>
           <button
             type="button"
@@ -242,7 +298,13 @@ watch(
             登出
           </button>
         </div>
-        <p class="mt-2 text-xs text-ink/60">{{ statusMessage }}</p>
+        <p class="mt-2 text-xs text-ink/60">
+          <span v-if="loginLoading" class="inline-flex items-center gap-2">
+            <span class="h-3.5 w-3.5 rounded-full border-2 border-cocoa/25 border-t-cocoa animate-spin"></span>
+            {{ statusMessage }}
+          </span>
+          <span v-else>{{ statusMessage }}</span>
+        </p>
       </div>
     </div>
 
@@ -260,9 +322,14 @@ watch(
         <button
           type="button"
           class="rounded-menu bg-saffron px-4 py-2 text-sm font-bold text-cocoa shadow-paper"
+          :class="uploadLoading ? 'opacity-70 cursor-not-allowed' : ''"
+          :disabled="uploadLoading"
           @click="upload"
         >
-          上傳
+          <span class="inline-flex items-center gap-2">
+            <span v-if="uploadLoading" class="h-4 w-4 rounded-full border-2 border-cocoa/25 border-t-cocoa animate-spin"></span>
+            上傳
+          </span>
         </button>
       </div>
       <textarea
@@ -271,7 +338,13 @@ watch(
         placeholder="貼上 CSV 或 JSON"
         class="mt-3 w-full rounded-menu border border-cocoa/15 bg-paper/90 p-3 text-sm text-ink focus:border-cocoa/40 focus:outline-none"
       ></textarea>
-      <p class="mt-2 text-xs text-ink/60">{{ uploadStatus }}</p>
+      <p class="mt-2 text-xs text-ink/60">
+        <span v-if="uploadLoading" class="inline-flex items-center gap-2">
+          <span class="h-3.5 w-3.5 rounded-full border-2 border-cocoa/25 border-t-cocoa animate-spin"></span>
+          {{ uploadStatus }}
+        </span>
+        <span v-else>{{ uploadStatus }}</span>
+      </p>
     </div>
 
     <div class="rounded-menu border border-cocoa/10 bg-paper/80 p-5 shadow-paper">
@@ -289,7 +362,13 @@ watch(
               {{ store.storeName || store.storeId }}{{ store.isActive ? '' : '（停用）' }}
             </option>
           </select>
-          <p class="mt-2 text-xs text-ink/60">{{ storeListStatus }}</p>
+          <p class="mt-2 text-xs text-ink/60">
+            <span v-if="storesLoading" class="inline-flex items-center gap-2">
+              <span class="h-3.5 w-3.5 rounded-full border-2 border-cocoa/25 border-t-cocoa animate-spin"></span>
+              {{ storeListStatus }}
+            </span>
+            <span v-else>{{ storeListStatus }}</span>
+          </p>
           <input
             v-model="openAdminName"
             type="text"
@@ -299,11 +378,22 @@ watch(
           <button
             type="button"
             class="mt-3 w-full rounded-menu bg-saffron px-4 py-2 text-sm font-bold text-cocoa"
+            :class="openLoading ? 'opacity-70 cursor-not-allowed' : ''"
+            :disabled="openLoading"
             @click="openOrder"
           >
-            開單
+            <span class="inline-flex items-center justify-center gap-2">
+              <span v-if="openLoading" class="h-4 w-4 rounded-full border-2 border-cocoa/25 border-t-cocoa animate-spin"></span>
+              開單
+            </span>
           </button>
-          <p class="mt-2 text-xs text-ink/60">{{ openStatus }}</p>
+          <p class="mt-2 text-xs text-ink/60">
+            <span v-if="openLoading" class="inline-flex items-center gap-2">
+              <span class="h-3.5 w-3.5 rounded-full border-2 border-cocoa/25 border-t-cocoa animate-spin"></span>
+              {{ openStatus }}
+            </span>
+            <span v-else>{{ openStatus }}</span>
+          </p>
         </div>
 
         <div class="rounded-menu border border-cocoa/10 bg-fog/60 p-4">
@@ -323,11 +413,22 @@ watch(
           <button
             type="button"
             class="mt-3 w-full rounded-menu border border-cocoa/20 px-4 py-2 text-sm font-bold text-cocoa"
+            :class="closeLoading ? 'opacity-70 cursor-not-allowed' : ''"
+            :disabled="closeLoading"
             @click="closeOrder"
           >
-            關單
+            <span class="inline-flex items-center justify-center gap-2">
+              <span v-if="closeLoading" class="h-4 w-4 rounded-full border-2 border-cocoa/25 border-t-cocoa animate-spin"></span>
+              關單
+            </span>
           </button>
-          <p class="mt-2 text-xs text-ink/60">{{ closeStatus }}</p>
+          <p class="mt-2 text-xs text-ink/60">
+            <span v-if="closeLoading" class="inline-flex items-center gap-2">
+              <span class="h-3.5 w-3.5 rounded-full border-2 border-cocoa/25 border-t-cocoa animate-spin"></span>
+              {{ closeStatus }}
+            </span>
+            <span v-else>{{ closeStatus }}</span>
+          </p>
         </div>
       </div>
     </div>
@@ -352,12 +453,23 @@ watch(
         <button
           type="button"
           class="rounded-menu border border-cocoa/20 px-4 py-2 text-sm font-bold text-cocoa"
+          :class="toggleLoading ? 'opacity-70 cursor-not-allowed' : ''"
+          :disabled="toggleLoading"
           @click="toggle"
         >
-          更新
+          <span class="inline-flex items-center gap-2">
+            <span v-if="toggleLoading" class="h-4 w-4 rounded-full border-2 border-cocoa/25 border-t-cocoa animate-spin"></span>
+            更新
+          </span>
         </button>
       </div>
-      <p class="mt-2 text-xs text-ink/60">{{ toggleStatus }}</p>
+      <p class="mt-2 text-xs text-ink/60">
+        <span v-if="toggleLoading" class="inline-flex items-center gap-2">
+          <span class="h-3.5 w-3.5 rounded-full border-2 border-cocoa/25 border-t-cocoa animate-spin"></span>
+          {{ toggleStatus }}
+        </span>
+        <span v-else>{{ toggleStatus }}</span>
+      </p>
     </div>
 
     <div class="rounded-menu border border-cocoa/10 bg-paper/80 p-5 shadow-paper">
@@ -372,12 +484,23 @@ watch(
         <button
           type="button"
           class="rounded-menu bg-saffron px-4 py-2 text-sm font-bold text-cocoa"
+          :class="exportLoading ? 'opacity-70 cursor-not-allowed' : ''"
+          :disabled="exportLoading"
           @click="exportOrders"
         >
-          匯出
+          <span class="inline-flex items-center gap-2">
+            <span v-if="exportLoading" class="h-4 w-4 rounded-full border-2 border-cocoa/25 border-t-cocoa animate-spin"></span>
+            匯出
+          </span>
         </button>
       </div>
-      <p class="mt-2 text-xs text-ink/60">{{ exportStatus }}</p>
+      <p class="mt-2 text-xs text-ink/60">
+        <span v-if="exportLoading" class="inline-flex items-center gap-2">
+          <span class="h-3.5 w-3.5 rounded-full border-2 border-cocoa/25 border-t-cocoa animate-spin"></span>
+          {{ exportStatus }}
+        </span>
+        <span v-else>{{ exportStatus }}</span>
+      </p>
       <pre v-if="exportResult" class="mt-3 max-h-48 overflow-auto rounded-menu border border-cocoa/10 bg-fog/60 p-3 text-xs text-ink">
 {{ exportResult }}
       </pre>

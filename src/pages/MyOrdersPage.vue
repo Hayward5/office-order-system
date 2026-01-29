@@ -10,6 +10,9 @@ const orders = ref([])
 const totalAmount = ref(0)
 const loading = ref(false)
 const loadingOrders = ref(false)
+const loadingSessions = ref(false)
+const cancelling = ref(false)
+const updating = ref(false)
 const errorMessage = ref('')
 const actionStatus = ref('')
 const editOpen = ref(false)
@@ -22,6 +25,7 @@ const editState = reactive({
 })
 const editStatus = ref('')
 const currentSessions = ref({ drink: null, meal: null })
+const loadingCurrentSessions = ref(false)
 
 const hasUserName = computed(() => userName.value.length > 0)
 const noteLimit = computed(() => 15)
@@ -90,6 +94,7 @@ async function loadSessions() {
     return
   }
   loading.value = true
+  loadingSessions.value = true
   errorMessage.value = ''
   try {
     if (!apiConfigured) {
@@ -107,6 +112,7 @@ async function loadSessions() {
     errorMessage.value = error.message
   } finally {
     loading.value = false
+    loadingSessions.value = false
   }
 }
 
@@ -146,12 +152,17 @@ async function loadCurrentSessions() {
   if (!apiConfigured) {
     return
   }
-  const response = await apiGet('getCurrentOrders')
-  if (response && response.success) {
-    currentSessions.value = {
-      drink: response.data?.drink || null,
-      meal: response.data?.meal || null
+  loadingCurrentSessions.value = true
+  try {
+    const response = await apiGet('getCurrentOrders')
+    if (response && response.success) {
+      currentSessions.value = {
+        drink: response.data?.drink || null,
+        meal: response.data?.meal || null
+      }
     }
+  } finally {
+    loadingCurrentSessions.value = false
   }
 }
 
@@ -191,23 +202,28 @@ async function submitEdit() {
     editStatus.value = '示意更新完成'
     return
   }
+  updating.value = true
   editStatus.value = '更新中...'
-  const response = await apiPost('updateOrder', {
-    orderId: editOrder.value.orderId,
-    userName: userName.value,
-    size: editState.size,
-    sugar: editState.sugar,
-    ice: editState.ice,
-    note: editState.note
-  })
-  if (response && response.success) {
-    editStatus.value = '更新成功'
-    await loadOrders()
-    actionStatus.value = '訂單已更新'
-    closeEdit()
-    return
+  try {
+    const response = await apiPost('updateOrder', {
+      orderId: editOrder.value.orderId,
+      userName: userName.value,
+      size: editState.size,
+      sugar: editState.sugar,
+      ice: editState.ice,
+      note: editState.note
+    })
+    if (response && response.success) {
+      editStatus.value = '更新成功'
+      await loadOrders()
+      actionStatus.value = '訂單已更新'
+      closeEdit()
+      return
+    }
+    editStatus.value = response?.error?.message || '更新失敗'
+  } finally {
+    updating.value = false
   }
-  editStatus.value = response?.error?.message || '更新失敗'
 }
 
 async function cancelOrder(orderId) {
@@ -222,17 +238,22 @@ async function cancelOrder(orderId) {
     return
   }
 
+  cancelling.value = true
   actionStatus.value = '取消中...'
-  const response = await apiPost('cancelOrder', {
-    orderId: orderId,
-    userName: userName.value
-  })
-  if (response && response.success) {
-    actionStatus.value = '訂單已取消'
-    await loadOrders()
-  } else {
-    actionStatus.value = response?.error?.message || '取消失敗'
-    errorMessage.value = response?.error?.message || '取消失敗'
+  try {
+    const response = await apiPost('cancelOrder', {
+      orderId: orderId,
+      userName: userName.value
+    })
+    if (response && response.success) {
+      actionStatus.value = '訂單已取消'
+      await loadOrders()
+    } else {
+      actionStatus.value = response?.error?.message || '取消失敗'
+      errorMessage.value = response?.error?.message || '取消失敗'
+    }
+  } finally {
+    cancelling.value = false
   }
 }
 
@@ -298,6 +319,8 @@ watch(selectedSessionId, async () => {
           <select
             v-model="selectedSessionId"
             class="rounded-menu border border-cocoa/15 bg-paper px-3 py-2 text-sm text-ink"
+            :disabled="loadingSessions"
+            :class="loadingSessions ? 'opacity-70 cursor-not-allowed' : ''"
           >
             <option value="" disabled>選擇場次</option>
             <option v-for="session in sessions" :key="session.orderSessionId" :value="session.orderSessionId">
@@ -305,9 +328,19 @@ watch(selectedSessionId, async () => {
             </option>
           </select>
           <span class="text-xs text-ink/60">共 {{ sessions.length }} 個場次</span>
+          <span v-if="loadingSessions && apiConfigured" class="inline-flex items-center gap-2 text-xs font-semibold text-ink/60">
+            <span class="h-3.5 w-3.5 rounded-full border-2 border-cocoa/25 border-t-cocoa animate-spin"></span>
+            讀取場次中
+          </span>
         </div>
         <p v-if="selectedSession" class="mt-2 text-xs text-ink/60">
-          {{ selectedSessionIsOpen ? '狀態：開放中（可修改/取消）' : '狀態：已關閉（僅可查看）' }}
+          <span v-if="loadingCurrentSessions && apiConfigured" class="inline-flex items-center gap-2">
+            <span class="h-3.5 w-3.5 rounded-full border-2 border-cocoa/25 border-t-cocoa animate-spin"></span>
+            同步場次狀態中
+          </span>
+          <span v-else>
+            {{ selectedSessionIsOpen ? '狀態：開放中（可修改/取消）' : '狀態：已關閉（僅可查看）' }}
+          </span>
         </p>
       </div>
 
@@ -321,10 +354,14 @@ watch(selectedSessionId, async () => {
         <h3 class="font-display text-xl text-cocoa">訂單列表</h3>
         <span class="text-xs font-semibold tracking-[0.2em] text-ink/55">TOTAL</span>
       </div>
-      <p class="mt-2 text-sm font-semibold text-cocoa">$ {{ totalAmount }}</p>
+      <p class="mt-2 text-sm font-semibold text-cocoa">$ {{ loadingOrders && apiConfigured ? '—' : totalAmount }}</p>
 
       <p v-if="actionStatus" class="mt-3 text-sm font-semibold text-ink/70">
-        {{ actionStatus }}
+        <span v-if="cancelling" class="inline-flex items-center gap-2">
+          <span class="h-4 w-4 rounded-full border-2 border-cocoa/25 border-t-cocoa animate-spin"></span>
+          {{ actionStatus }}
+        </span>
+        <span v-else>{{ actionStatus }}</span>
       </p>
 
       <div v-if="loadingOrders && apiConfigured" class="mt-4 rounded-menu border border-cocoa/10 bg-fog/60 p-4">
@@ -375,11 +412,14 @@ watch(selectedSessionId, async () => {
             <button
               type="button"
               class="rounded-menu bg-cocoa px-3 py-1 text-xs font-semibold text-paper"
-              :class="(!selectedSessionIsOpen || order.status !== 'active') ? 'cursor-not-allowed opacity-50' : ''"
-              :disabled="!selectedSessionIsOpen || order.status !== 'active'"
+              :class="(!selectedSessionIsOpen || order.status !== 'active' || cancelling) ? 'cursor-not-allowed opacity-50' : ''"
+              :disabled="!selectedSessionIsOpen || order.status !== 'active' || cancelling"
               @click="cancelOrder(order.orderId)"
             >
-              取消
+              <span class="inline-flex items-center gap-2">
+                <span v-if="cancelling" class="h-3.5 w-3.5 rounded-full border-2 border-paper/30 border-t-paper animate-spin"></span>
+                取消
+              </span>
             </button>
           </div>
         </div>
@@ -469,11 +509,22 @@ watch(selectedSessionId, async () => {
               <button
                 type="button"
                 class="rounded-menu bg-saffron px-5 py-2 text-sm font-bold text-cocoa shadow-paper"
+                :class="updating ? 'opacity-70 cursor-not-allowed' : ''"
+                :disabled="updating"
                 @click="submitEdit"
               >
-                更新訂單
+                <span class="inline-flex items-center gap-2">
+                  <span v-if="updating" class="h-4 w-4 rounded-full border-2 border-cocoa/25 border-t-cocoa animate-spin"></span>
+                  更新訂單
+                </span>
               </button>
-              <span class="text-xs font-semibold text-ink/70">{{ editStatus }}</span>
+              <span class="text-xs font-semibold text-ink/70">
+                <span v-if="updating" class="inline-flex items-center gap-2">
+                  <span class="h-3.5 w-3.5 rounded-full border-2 border-cocoa/25 border-t-cocoa animate-spin"></span>
+                  {{ editStatus }}
+                </span>
+                <span v-else>{{ editStatus }}</span>
+              </span>
             </div>
           </div>
         </div>

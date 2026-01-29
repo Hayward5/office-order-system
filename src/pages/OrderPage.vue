@@ -9,6 +9,7 @@ const activeType = ref('drink')
 const products = ref([])
 const loadingSessions = ref(false)
 const loadingProducts = ref(false)
+const submitting = ref(false)
 const errorMessage = ref('')
 const sheetOpen = ref(false)
 const selectedProduct = ref(null)
@@ -202,25 +203,30 @@ async function submitOrder() {
     return
   }
 
+  submitting.value = true
   submitStatus.value = '送出中...'
-  const response = await apiPost('submitOrder', {
-    userName: userName.value,
-    orderSessionId: session.orderSessionId,
-    storeType: session.storeType,
-    productId: product.productId,
-    size: formState.size,
-    sugar: formState.sugar,
-    ice: formState.ice,
-    note: formState.note
-  })
+  try {
+    const response = await apiPost('submitOrder', {
+      userName: userName.value,
+      orderSessionId: session.orderSessionId,
+      storeType: session.storeType,
+      productId: product.productId,
+      size: formState.size,
+      sugar: formState.sugar,
+      ice: formState.ice,
+      note: formState.note
+    })
 
-  if (response && response.success) {
-    submitStatus.value = '訂單送出成功'
-    closeSheet()
-    return
+    if (response && response.success) {
+      submitStatus.value = '訂單送出成功'
+      closeSheet()
+      return
+    }
+
+    submitStatus.value = response?.error?.message || '送出失敗，請稍後再試'
+  } finally {
+    submitting.value = false
   }
-
-  submitStatus.value = response?.error?.message || '送出失敗，請稍後再試'
 }
 
 watch(activeType, () => {
@@ -461,9 +467,14 @@ onMounted(async () => {
               <button
                 type="button"
                 class="rounded-menu bg-saffron px-5 py-2 text-sm font-bold text-cocoa shadow-paper"
+                :class="submitting ? 'opacity-70 cursor-not-allowed' : ''"
+                :disabled="submitting"
                 @click="submitOrder"
               >
-                送出訂單
+                <span class="inline-flex items-center gap-2">
+                  <span v-if="submitting" class="h-4 w-4 rounded-full border-2 border-cocoa/25 border-t-cocoa animate-spin"></span>
+                  送出訂單
+                </span>
               </button>
               <span class="text-xs font-semibold text-ink/70">{{ submitStatus }}</span>
             </div>
