@@ -1,6 +1,6 @@
-Date: 2026-01-28
+Date: 2026-01-28 (API Testing) + 2026-01-29 (UI Testing)
 
-Checklist Results
+API Checklist Results
 - [x] GAS ping works and returns JSON
 - [x] adminLogin returns adminToken
 - [x] uploadData upserts Stores and Products
@@ -13,6 +13,26 @@ Checklist Results
 - [x] getMyOrders/getOrderSessions support history lookup
 - [x] getStatistics/exportOrders match Orders data
 - [x] closeOrder closes sessions; submit/update after close are rejected with SESSION_CLOSED
+
+UI End-to-End Testing Results (2026-01-29)
+- [x] Frontend .env.local configured with GAS Web App URL
+- [x] Dev server successfully started (npm run dev → http://localhost:5173)
+- [x] API connection verified: page displays "GAS API" (not "本機示意")
+- [x] User registration: name input "測試員" saved to localStorage
+- [x] Order sessions display: Both sessions (暖心飲品/暖心便當) show "開放中" status
+- [x] Product selection: drink products list loaded successfully
+- [x] Order form (bottom sheet): size/sugar/ice options displayed correctly
+- [x] Order submission: Order successfully submitted (message: "訂單送出成功")
+- [x] My Orders page: Session selection and order history UI functional
+- [x] Statistics page: KPI display and session selection UI functional
+- [x] Admin login: Password authentication successful (status: "已登入")
+- [x] Admin interface: All management sections visible (上傳/場次管理/啟用停用/匯出)
+- [x] Admin logout: Successfully logged out (status: "未登入")
+
+UI Screenshot Evidence
+- 1-home.png (259KB): Homepage with session cards and bottom navigation
+- 6-order-bottom-sheet.png (106KB): Order bottom sheet with size/sugar/ice options
+- 9-admin.png (274KB): Admin interface after successful login
 
 Key Evidence Snippets (responses)
 
