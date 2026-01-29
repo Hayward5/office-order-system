@@ -9,6 +9,7 @@ const selectedSessionId = ref('')
 const orders = ref([])
 const totalAmount = ref(0)
 const loading = ref(false)
+const loadingOrders = ref(false)
 const errorMessage = ref('')
 const actionStatus = ref('')
 const editOpen = ref(false)
@@ -113,9 +114,10 @@ async function loadOrders() {
   if (!selectedSessionId.value || !hasUserName.value) {
     orders.value = []
     totalAmount.value = 0
+    loadingOrders.value = false
     return
   }
-  loading.value = true
+  loadingOrders.value = true
   errorMessage.value = ''
   actionStatus.value = ''
   try {
@@ -136,7 +138,7 @@ async function loadOrders() {
   } catch (error) {
     errorMessage.value = error.message
   } finally {
-    loading.value = false
+    loadingOrders.value = false
   }
 }
 
@@ -325,7 +327,18 @@ watch(selectedSessionId, async () => {
         {{ actionStatus }}
       </p>
 
-      <div v-if="orders.length === 0" class="mt-4 rounded-menu border border-cocoa/10 bg-fog/60 p-4">
+      <div v-if="loadingOrders && apiConfigured" class="mt-4 rounded-menu border border-cocoa/10 bg-fog/60 p-4">
+        <p class="text-xs font-semibold tracking-[0.24em] text-ink/55">LOADING</p>
+        <div class="mt-3 flex items-start gap-3">
+          <span class="mt-0.5 h-4 w-4 rounded-full border-2 border-cocoa/25 border-t-cocoa animate-spin"></span>
+          <div>
+            <p class="text-sm font-semibold text-ink">讀取訂單中</p>
+            <p class="mt-1 text-xs text-ink/60">正在同步你在此場次的訂單，請稍等一下。</p>
+          </div>
+        </div>
+      </div>
+
+      <div v-else-if="orders.length === 0" class="mt-4 rounded-menu border border-cocoa/10 bg-fog/60 p-4">
         <p class="text-xs font-semibold tracking-[0.24em] text-ink/55">EMPTY</p>
         <p class="mt-2 text-sm font-semibold text-ink">尚無訂單</p>
       </div>
