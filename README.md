@@ -19,9 +19,9 @@
 - 管理者 API：adminLogin / uploadData / openOrder / closeOrder / getStores / toggleActive / exportOrders
 - Sheets schema 文件 + idempotent 初始化腳本
 - 部署與手動 QA 文件
+- 前端 UI 端到端手動驗收（已用真實 GAS + Sheets 資料完成，含 UI 截圖證據）
 
-尚待完成（需要實際部署與資料）：
-- 前端 UI 端到端手動驗收（用真實 GAS + Sheets 資料跑一輪，補 UI 截圖證據）
+尚待完成：
 - GitHub Pages 實際部署驗證（確認資產不 404、hash 路由可直開/refresh）
 - 若要正式上線：將測試資料替換為正式店家/品項，必要時清理 Orders/CurrentOrder
 
@@ -52,6 +52,33 @@
 操作注意事項（常見踩雷）：
 - GAS Web App 常見 302 redirect；curl 請用 `-L`
 - 不要在 `-L` 同時硬指定 `-X POST`（redirect 後可能變 405）；用 `--data` 讓 curl 自行處理即可
+
+---
+
+## 最新完成與驗證（2026-01-29）
+
+前端 UI 端到端測試已完成（以 localhost:5173 + 真實 GAS Web App 測試）：
+- [x] 前端環境設定：`.env.local` 配置 GAS Web App URL
+- [x] Dev server 啟動：`npm run dev` 成功運行
+- [x] API 連接驗證：頁面顯示「GAS API」（非 mock 模式）
+- [x] 使用者註冊：姓名輸入「測試員」存入 localStorage
+- [x] 訂單場次顯示：兩個場次（暖心飲品/暖心便當）皆顯示「開放中」
+- [x] 商品列表：飲料商品列表成功載入
+- [x] 訂購表單（bottom sheet）：尺寸/糖度/冰塊選項顯示正確
+- [x] 訂單送出：訂單成功送出（訊息：「訂單送出成功」）
+- [x] 我的訂單頁：場次選單與訂單歷史 UI 正常運作
+- [x] 統計頁：KPI 顯示與場次選擇 UI 正常運作
+- [x] 管理者登入：密碼驗證成功（狀態：「已登入」）
+- [x] 管理者介面：所有管理區塊可見（上傳/場次管理/啟用停用/匯出）
+- [x] 管理者登出：成功登出（狀態：「未登入」）
+
+UI 截圖證據（本 repo 內）：
+- `.sisyphus/evidence/1-home.png` (259KB) - 首頁場次卡片與底部導覽列
+- `.sisyphus/evidence/6-order-bottom-sheet.png` (106KB) - 訂購 bottom sheet 與選項配置
+- `.sisyphus/evidence/9-admin.png` (274KB) - 管理者介面登入後狀態
+
+完整測試清單詳見：
+- `.sisyphus/evidence/10-final-checklist.txt`
 
 ---
 
@@ -227,19 +254,39 @@ bash scripts/seed-data.sh
 - 7 update/cancel/myOrders/orderSessions
 - 8 getStatistics + exportOrders
 - 9 管理者後台（登入/上傳/開關單/登出）
+- 10 前端 UI 端到端驗收（已用真實 GAS + Sheets 完成）
 
 待完成：
-- 10 部署流程與最終驗收（需 GAS Web App URL + 實際資料）
-- 11~13 最終驗收項目（API 實際呼叫）
+- 11 GitHub Pages 部署驗證（資產載入、hash 路由、refresh 測試）
+- 12 正式上線準備（替換測試資料為正式店家/品項）
 
 ---
 
 ## 接下來要做什麼（給下一個 AI/工程師）
 
-1. 設定前端 `.env.local` 的 `VITE_API_BASE_URL` 指向你的 GAS Web App `.../exec`（不要 commit `.env.local`）。
-2. `npm install && npm run dev`，用 UI 跑一輪：輸入姓名 → 選 drink/meal → 下單 → 我的訂單 → 統計 → admin 登入/開關/上傳/匯出。
-3. 補齊 UI 證據截圖（依 `.sisyphus/plans/office-order-system.md` 的要求，存到 `.sisyphus/evidence/`）。
-4. 部署到 GitHub Pages 並驗證：資產不 404、hash 路由可用（含 refresh/直開）。
+**核心功能已全部完成並驗證**（API + UI 端到端測試已通過），剩餘工作：
+
+1. **部署到 GitHub Pages**：
+   ```bash
+   npm run build
+   # 將 dist/ 內容部署到 GitHub Pages
+   ```
+   驗證項目：
+   - 靜態資產正常載入（CSS/JS/icon 無 404）
+   - Hash 路由正常運作（可直開 URL、可 refresh）
+   - API 呼叫正常（確認 VITE_API_BASE_URL 在 build 時已包含）
+
+2. **正式上線前準備**（如需要）：
+   - 在 Google Sheets 替換測試店家/商品資料為正式資料
+   - 清理 Orders/CurrentOrder sheets 中的測試訂單
+   - 確認管理者密碼已妥善保管
+
+3. **長期維護**（可選）：
+   - 定期匯出訂單資料備份
+   - 監控 Google Sheets 容量（Orders sheet 列數）
+   - 必要時可考慮歸檔舊訂單
+
+**注意**：`.env.local` 包含 GAS Web App URL，請勿 commit（已在 `.gitignore` 排除）。
 
 ---
 
