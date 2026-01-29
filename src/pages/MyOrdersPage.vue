@@ -10,6 +10,7 @@ const orders = ref([])
 const totalAmount = ref(0)
 const loading = ref(false)
 const errorMessage = ref('')
+const actionStatus = ref('')
 const editOpen = ref(false)
 const editOrder = ref(null)
 const editState = reactive({
@@ -25,6 +26,19 @@ const hasUserName = computed(() => userName.value.length > 0)
 const noteLimit = computed(() => 15)
 const remainingNote = computed(() => noteLimit.value - editState.note.length)
 const selectedSession = computed(() => sessions.value.find((s) => s.orderSessionId === selectedSessionId.value))
+
+const selectedSessionIsOpen = computed(() => {
+  const session = selectedSession.value
+  if (!session || !session.orderSessionId || !session.storeType) {
+    return false
+  }
+  const current = currentSessions.value?.[session.storeType] || null
+  return Boolean(
+    current
+      && current.orderSessionId === session.orderSessionId
+      && current.status === 'open'
+  )
+})
 
 const mockSessions = [
   { orderSessionId: 'OS20260128001', storeType: 'drink', createdAt: '2026-01-28 10:00' },
@@ -103,6 +117,7 @@ async function loadOrders() {
   }
   loading.value = true
   errorMessage.value = ''
+  actionStatus.value = ''
   try {
     if (!apiConfigured) {
       orders.value = mockOrders[selectedSessionId.value] || []
@@ -139,6 +154,13 @@ async function loadCurrentSessions() {
 }
 
 function openEdit(order) {
+  if (!selectedSessionIsOpen.value) {
+    actionStatus.value = '此場次已關閉，無法修改訂單'
+    return
+  }
+  if (!order || order.status !== 'active') {
+    return
+  }
   editOrder.value = order
   editState.size = order.size || ''
   editState.sugar = order.sugar || ''
@@ -157,6 +179,12 @@ async function submitEdit() {
   if (!editOrder.value) {
     return
   }
+
+  if (!selectedSessionIsOpen.value) {
+    editStatus.value = '此場次已關閉，無法更新'
+    return
+  }
+
   if (!apiConfigured) {
     editStatus.value = '示意更新完成'
     return
@@ -173,24 +201,35 @@ async function submitEdit() {
   if (response && response.success) {
     editStatus.value = '更新成功'
     await loadOrders()
+    actionStatus.value = '訂單已更新'
+    closeEdit()
     return
   }
   editStatus.value = response?.error?.message || '更新失敗'
 }
 
 async function cancelOrder(orderId) {
+  if (!selectedSessionIsOpen.value) {
+    actionStatus.value = '此場次已關閉，無法取消訂單'
+    return
+  }
+
   if (!apiConfigured) {
     orders.value = orders.value.filter((order) => order.orderId !== orderId)
     totalAmount.value = orders.value.reduce((sum, order) => sum + order.price, 0)
     return
   }
+
+  actionStatus.value = '取消中...'
   const response = await apiPost('cancelOrder', {
     orderId: orderId,
     userName: userName.value
   })
   if (response && response.success) {
+    actionStatus.value = '訂單已取消'
     await loadOrders()
   } else {
+    actionStatus.value = response?.error?.message || '取消失敗'
     errorMessage.value = response?.error?.message || '取消失敗'
   }
 }
@@ -265,6 +304,9 @@ watch(selectedSessionId, async () => {
           </select>
           <span class="text-xs text-ink/60">共 {{ sessions.length }} 個場次</span>
         </div>
+        <p v-if="selectedSession" class="mt-2 text-xs text-ink/60">
+          {{ selectedSessionIsOpen ? '狀態：開放中（可修改/取消）' : '狀態：已關閉（僅可查看）' }}
+        </p>
       </div>
 
       <p v-if="errorMessage" class="mt-4 text-sm font-semibold text-cocoa">
@@ -278,6 +320,10 @@ watch(selectedSessionId, async () => {
         <span class="text-xs font-semibold tracking-[0.2em] text-ink/55">TOTAL</span>
       </div>
       <p class="mt-2 text-sm font-semibold text-cocoa">$ {{ totalAmount }}</p>
+
+      <p v-if="actionStatus" class="mt-3 text-sm font-semibold text-ink/70">
+        {{ actionStatus }}
+      </p>
 
       <div v-if="orders.length === 0" class="mt-4 rounded-menu border border-cocoa/10 bg-fog/60 p-4">
         <p class="text-xs font-semibold tracking-[0.24em] text-ink/55">EMPTY</p>
@@ -307,6 +353,8 @@ watch(selectedSessionId, async () => {
             <button
               type="button"
               class="rounded-menu border border-cocoa/20 px-3 py-1 text-xs font-semibold text-cocoa"
+              :class="(!selectedSessionIsOpen || order.status !== 'active') ? 'cursor-not-allowed opacity-50' : ''"
+              :disabled="!selectedSessionIsOpen || order.status !== 'active'"
               @click="openEdit(order)"
             >
               修改
@@ -314,6 +362,8 @@ watch(selectedSessionId, async () => {
             <button
               type="button"
               class="rounded-menu bg-cocoa px-3 py-1 text-xs font-semibold text-paper"
+              :class="(!selectedSessionIsOpen || order.status !== 'active') ? 'cursor-not-allowed opacity-50' : ''"
+              :disabled="!selectedSessionIsOpen || order.status !== 'active'"
               @click="cancelOrder(order.orderId)"
             >
               取消
