@@ -239,7 +239,6 @@ watch(sessions, () => {
   } else if (sessions.value.meal) {
     activeType.value = 'meal'
   }
-  loadProducts()
 })
 
 onMounted(async () => {

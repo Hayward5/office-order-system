@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { apiConfigured, apiPost } from '../services/api'
+import { apiConfigured, apiPost, clearAdminCaches } from '../services/api'
 
 const password = ref('')
 const adminToken = ref(sessionStorage.getItem('officeOrderAdminToken') || '')
@@ -52,6 +52,7 @@ const isLoggedIn = computed(() => {
 })
 
 function logout() {
+  clearAdminCaches()
   adminToken.value = ''
   adminExpiresAt.value = 0
   sessionStorage.removeItem('officeOrderAdminToken')
