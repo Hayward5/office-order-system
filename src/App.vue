@@ -40,7 +40,7 @@ function iconPath(name) {
               <h1 class="mt-2 font-display text-3xl leading-[1.06] text-cocoa sm:text-4xl">
                 飢餓同事 HungryColleagues
               </h1>
-              <p class="mt-3 max-w-[52ch] text-sm leading-relaxed text-ink/80">
+              <p class="mt-3 max-w-[54ch] text-sm leading-relaxed text-ink/80">
                 今天的會議可以延，但飲料和下午茶不行 / 認真工作之前，先認真點餐
               </p>
             </div>

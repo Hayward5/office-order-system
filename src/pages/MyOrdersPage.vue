@@ -350,19 +350,39 @@ watch(selectedSessionId, async () => {
         <div
           v-for="order in orders"
           :key="order.orderId"
-          class="rounded-menu border border-cocoa/10 bg-fog/60 p-4"
+          class="rounded-menu border p-4"
+          :class="order.status === 'cancelled'
+            ? 'border-dashed border-cocoa/20 bg-paper/60 opacity-80'
+            : 'border-cocoa/10 bg-fog/60'"
         >
           <div class="flex items-start justify-between gap-4">
             <div>
-              <p class="text-sm font-semibold text-ink">{{ order.productName }}</p>
-              <p class="mt-1 text-xs text-ink/60">
+              <p
+                class="text-sm font-semibold"
+                :class="order.status === 'cancelled' ? 'text-ink/50 line-through' : 'text-ink'"
+              >
+                {{ order.productName }}
+              </p>
+              <p
+                class="mt-1 text-xs"
+                :class="order.status === 'cancelled' ? 'text-ink/45' : 'text-ink/60'"
+              >
                 {{ [order.size, order.sugar, order.ice].filter(Boolean).join(' / ') || order.note || '—' }}
               </p>
-              <p class="mt-2 text-xs text-ink/60">{{ order.createdAt }}</p>
+              <p class="mt-2 text-xs" :class="order.status === 'cancelled' ? 'text-ink/45' : 'text-ink/60'">
+                {{ order.createdAt }}
+              </p>
             </div>
             <div class="text-right">
-              <p class="text-sm font-semibold text-cocoa">$ {{ order.price }}</p>
-              <p class="mt-1 text-xs text-ink/60">{{ order.status }}</p>
+              <p class="text-sm font-semibold" :class="order.status === 'cancelled' ? 'text-cocoa/60' : 'text-cocoa'">
+                $ {{ order.price }}
+              </p>
+              <p
+                class="mt-1 text-xs font-semibold tracking-[0.2em]"
+                :class="order.status === 'cancelled' ? 'text-cocoa/70' : 'text-ink/60'"
+              >
+                {{ order.status === 'cancelled' ? '已取消' : '有效' }}
+              </p>
             </div>
           </div>
           <div class="mt-3 flex flex-wrap items-center gap-2">

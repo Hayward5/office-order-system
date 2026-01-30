@@ -187,6 +187,7 @@ async function upload() {
     })
     if (response && response.success) {
       uploadStatus.value = `完成：新增 ${response.insertedCount} 筆，更新 ${response.updatedCount} 筆`
+      uploadData.value = ''
       return
     }
     uploadStatus.value = response?.error?.message || '上傳失敗'
