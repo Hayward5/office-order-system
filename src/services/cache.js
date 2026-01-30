@@ -1,3 +1,6 @@
+// Cache version - increment when data structure changes
+const CACHE_VERSION = 1
+
 // In-memory storage for in-flight promises (deduplication)
 const inFlightRequests = new Map()
 
@@ -45,9 +48,14 @@ export function getCached(key, storage = 'local') {
     
     if (!cached) return undefined
 
-    const { data, expiresAt } = JSON.parse(cached)
+    const parsed = JSON.parse(cached)
+    const { data, expiresAt, version } = parsed
     
-    // Check if expired
+    if (version !== CACHE_VERSION) {
+      storageObj.removeItem(fullKey)
+      return undefined
+    }
+    
     if (expiresAt && Date.now() > expiresAt) {
       storageObj.removeItem(fullKey)
       return undefined
@@ -75,7 +83,7 @@ export function setCached(key, data, ttlMs = 5 * 60 * 1000, storage = 'local') {
 
     const fullKey = `hc_${key}`
     const expiresAt = ttlMs ? Date.now() + ttlMs : null
-    const cacheEntry = JSON.stringify({ data, expiresAt })
+    const cacheEntry = JSON.stringify({ data, expiresAt, version: CACHE_VERSION })
 
     storageObj.setItem(fullKey, cacheEntry)
     return true
