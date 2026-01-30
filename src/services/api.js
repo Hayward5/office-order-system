@@ -1,6 +1,23 @@
+import { getOrFetch, invalidateByPrefix } from './cache.js'
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 
 export const apiConfigured = Boolean(API_BASE_URL)
+
+const CACHE_CONFIG = {
+  'getCurrentOrders': { ttl: 5 * 60 * 1000, storage: 'session' },
+  'getProducts': { ttl: 24 * 60 * 60 * 1000, storage: 'local' },
+  'getOrderSessions': { ttl: 5 * 60 * 1000, storage: 'session' },
+  'getStores': { ttl: 24 * 60 * 60 * 1000, storage: 'memory' }
+}
+
+const INVALIDATION_MAP = {
+  'uploadData': (body) => body.dataType === 'store' ? ['hc_getStores_'] : ['hc_getProducts_'],
+  'toggleActive': (body) => body.type === 'store' ? ['hc_getStores_'] : ['hc_getProducts_'],
+  'openOrder': () => ['hc_getCurrentOrders'],
+  'closeOrder': () => ['hc_getCurrentOrders'],
+  'submitOrder': () => ['hc_getOrderSessions_']
+}
 
 function buildUrl(action, params) {
   const url = new URL(API_BASE_URL)
@@ -17,6 +34,24 @@ export async function apiGet(action, params = {}) {
   if (!API_BASE_URL) {
     return null
   }
+
+  // Check if this action should use cache
+  const cacheConfig = CACHE_CONFIG[action]
+  if (cacheConfig) {
+    const cacheKey = `${action}_${JSON.stringify(params || {})}`
+    return getOrFetch(
+      cacheKey,
+      async () => {
+        const url = buildUrl(action, params)
+        const response = await fetch(url)
+        return parseResponse(response)
+      },
+      cacheConfig.ttl,
+      cacheConfig.storage
+    )
+  }
+
+  // No cache - use original logic
   const url = buildUrl(action, params)
   const response = await fetch(url)
   return parseResponse(response)
@@ -36,7 +71,24 @@ export async function apiPost(action, body = {}) {
     body: formData.toString()
   })
 
-  return parseResponse(response)
+  const result = await parseResponse(response)
+
+  // Invalidate caches after successful mutations
+  if (result?.success === true && INVALIDATION_MAP[action]) {
+    const prefixes = INVALIDATION_MAP[action](body)
+    prefixes.forEach(prefix => {
+      // Determine storage type from prefix pattern
+      if (prefix.includes('getStores')) {
+        invalidateByPrefix(prefix, 'memory')
+      } else if (prefix.includes('getCurrentOrders') || prefix.includes('getOrderSessions')) {
+        invalidateByPrefix(prefix, 'session')
+      } else {
+        invalidateByPrefix(prefix, 'local')
+      }
+    })
+  }
+
+  return result
 }
 
 async function parseResponse(response) {
@@ -60,4 +112,8 @@ async function parseResponse(response) {
       }
     }
   }
+}
+
+export function clearAdminCaches() {
+  invalidateByPrefix('hc_getStores_', 'memory')
 }
