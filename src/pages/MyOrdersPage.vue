@@ -45,40 +45,6 @@ const selectedSessionIsOpen = computed(() => {
   )
 })
 
-const mockSessions = [
-  { orderSessionId: 'OS2026-01-29T10:30:00', storeType: 'drink', createdAt: '2026-01-29 10:30' },
-  { orderSessionId: 'OS2026-01-28T12:00:00', storeType: 'meal', createdAt: '2026-01-28 12:00' }
-]
-
-const mockOrders = {
-  'OS2026-01-29T10:30:00': [
-    {
-      orderId: 1,
-      productName: '焙茶拿鐵',
-      size: '中杯',
-      sugar: '半糖',
-      ice: '少冰',
-      note: '',
-      price: 65,
-      createdAt: '2026-01-28 10:20',
-      status: 'active'
-    }
-  ],
-  OS20260127001: [
-    {
-      orderId: 2,
-      productName: '香煎雞腿便當',
-      size: '',
-      sugar: '',
-      ice: '',
-      note: '不要辣',
-      price: 110,
-      createdAt: '2026-01-27 12:10',
-      status: 'active'
-    }
-  ]
-}
-
 function saveName() {
   const trimmed = nameInput.value.trim()
   if (!trimmed) {
@@ -93,15 +59,15 @@ async function loadSessions() {
   if (!hasUserName.value) {
     return
   }
+  if (!apiConfigured) {
+    errorMessage.value = '請設定 VITE_API_BASE_URL 環境變數'
+    return
+  }
+  
   loading.value = true
   loadingSessions.value = true
   errorMessage.value = ''
   try {
-    if (!apiConfigured) {
-      sessions.value = mockSessions
-      selectedSessionId.value = sessions.value[0]?.orderSessionId || ''
-      return
-    }
     const response = await apiGet('getOrderSessions', { userName: userName.value })
     if (!response || !response.success) {
       throw new Error(response?.error?.message || 'Failed to load sessions.')
@@ -123,15 +89,16 @@ async function loadOrders() {
     loadingOrders.value = false
     return
   }
+  
+  if (!apiConfigured) {
+    errorMessage.value = '請設定 VITE_API_BASE_URL 環境變數'
+    return
+  }
+  
   loadingOrders.value = true
   errorMessage.value = ''
   actionStatus.value = ''
   try {
-    if (!apiConfigured) {
-      orders.value = mockOrders[selectedSessionId.value] || []
-      totalAmount.value = orders.value.reduce((sum, order) => sum + order.price, 0)
-      return
-    }
     const response = await apiGet('getMyOrders', {
       userName: userName.value,
       orderSessionId: selectedSessionId.value
@@ -194,12 +161,12 @@ async function submitEdit() {
   }
 
   if (!selectedSessionIsOpen.value) {
-    editStatus.value = '此場次已關閉，無法更新'
+    editStatus.value = '此場次已關閉,無法更新'
     return
   }
 
   if (!apiConfigured) {
-    editStatus.value = '示意更新完成'
+    editStatus.value = '請設定 VITE_API_BASE_URL 環境變數'
     return
   }
   updating.value = true
@@ -228,13 +195,12 @@ async function submitEdit() {
 
 async function cancelOrder(orderId) {
   if (!selectedSessionIsOpen.value) {
-    actionStatus.value = '此場次已關閉，無法取消訂單'
+    actionStatus.value = '此場次已關閉,無法取消訂單'
     return
   }
 
   if (!apiConfigured) {
-    orders.value = orders.value.filter((order) => order.orderId !== orderId)
-    totalAmount.value = orders.value.reduce((sum, order) => sum + order.price, 0)
+    actionStatus.value = '請設定 VITE_API_BASE_URL 環境變數'
     return
   }
 
@@ -328,7 +294,7 @@ watch(selectedSessionId, async () => {
             </option>
           </select>
           <span class="text-xs text-ink/60">共 {{ sessions.length }} 個場次</span>
-          <span v-if="loadingSessions && apiConfigured" class="inline-flex items-center gap-2 text-xs font-semibold text-ink/60">
+          <span v-if="loadingSessions" class="inline-flex items-center gap-2 text-xs font-semibold text-ink/60">
             <span class="h-3.5 w-3.5 rounded-full border-2 border-cocoa/25 border-t-cocoa animate-spin"></span>
             讀取場次中
           </span>
@@ -354,7 +320,7 @@ watch(selectedSessionId, async () => {
         <h3 class="font-display text-xl text-cocoa">訂單列表</h3>
         <span class="text-xs font-semibold tracking-[0.2em] text-ink/55">TOTAL</span>
       </div>
-      <p class="mt-2 text-sm font-semibold text-cocoa">$ {{ loadingOrders && apiConfigured ? '—' : totalAmount }}</p>
+          <p class="mt-2 text-sm font-semibold text-cocoa">$ {{ loadingOrders ? '—' : totalAmount }}</p>
 
       <p v-if="actionStatus" class="mt-3 text-sm font-semibold text-ink/70">
         <span v-if="cancelling" class="inline-flex items-center gap-2">
@@ -364,7 +330,7 @@ watch(selectedSessionId, async () => {
         <span v-else>{{ actionStatus }}</span>
       </p>
 
-      <div v-if="loadingOrders && apiConfigured" class="mt-4 rounded-menu border border-cocoa/10 bg-fog/60 p-4">
+      <div v-if="loadingOrders" class="mt-4 rounded-menu border border-cocoa/10 bg-fog/60 p-4">
         <p class="text-xs font-semibold tracking-[0.24em] text-ink/55">LOADING</p>
         <div class="mt-3 flex items-start gap-3">
           <span class="mt-0.5 h-4 w-4 rounded-full border-2 border-cocoa/25 border-t-cocoa animate-spin"></span>

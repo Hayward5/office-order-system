@@ -26,66 +26,6 @@ const activeSession = computed(() => sessions.value[activeType.value] || null)
 const syncing = computed(() => loadingSessions.value || loadingProducts.value)
 const noteLimit = computed(() => 15)
 const remainingNote = computed(() => noteLimit.value - formState.note.length)
-
-const mockSessions = {
-  drink: {
-    orderSessionId: 'OS2026-01-29T10:30:00',
-    storeId: 'S001',
-    storeName: '暖心飲品',
-    storeType: 'drink',
-    status: 'open',
-    options: {
-      sizeOptions: ['大杯', '中杯', '小杯'],
-      sugarOptions: ['正常', '半糖', '三分糖', '一分糖', '無糖'],
-      iceOptions: ['正常冰', '少冰', '微冰', '去冰', '溫', '熱']
-    }
-  },
-  meal: {
-    orderSessionId: 'OS2026-01-29T12:00:00',
-    storeId: 'M001',
-    storeName: '午餐食堂',
-    storeType: 'meal',
-    status: 'open'
-  }
-}
-
-const mockProducts = {
-  drink: [
-    {
-      productId: 'P001',
-      productName: '焙茶拿鐵',
-      price: 65,
-      category: '拿鐵',
-      hasSizeOption: true,
-      hasSugarOption: true,
-      hasIceOption: true,
-      allowNote: false
-    },
-    {
-      productId: 'P002',
-      productName: '桂花青茶',
-      price: 55,
-      category: '茶類',
-      hasSizeOption: true,
-      hasSugarOption: true,
-      hasIceOption: true,
-      allowNote: false
-    }
-  ],
-  meal: [
-    {
-      productId: 'M001',
-      productName: '香煎雞腿便當',
-      price: 110,
-      category: '便當',
-      hasSizeOption: false,
-      hasSugarOption: false,
-      hasIceOption: false,
-      allowNote: true
-    }
-  ]
-}
-
 const displayProducts = computed(() => products.value)
 
 function saveName() {
@@ -124,13 +64,14 @@ function pickOption(key, value) {
 }
 
 async function loadSessions() {
+  if (!apiConfigured) {
+    errorMessage.value = '請設定 VITE_API_BASE_URL 環境變數'
+    return
+  }
+  
   loadingSessions.value = true
   errorMessage.value = ''
   try {
-    if (!apiConfigured) {
-      sessions.value = mockSessions
-      return
-    }
     const response = await apiGet('getCurrentOrders')
     if (!response || !response.success) {
       throw new Error(response?.error?.message || 'Failed to load sessions.')
@@ -154,7 +95,7 @@ async function loadProducts() {
   }
 
   if (!apiConfigured) {
-    products.value = mockProducts[session.storeType] || []
+    errorMessage.value = '請設定 VITE_API_BASE_URL 環境變數'
     return
   }
 
@@ -199,7 +140,7 @@ async function submitOrder() {
   }
 
   if (!apiConfigured) {
-    submitStatus.value = '已建立示意訂單（尚未送出）'
+    submitStatus.value = '請設定 VITE_API_BASE_URL 環境變數'
     return
   }
 
@@ -223,7 +164,7 @@ async function submitOrder() {
       return
     }
 
-    submitStatus.value = response?.error?.message || '送出失敗，請稍後再試'
+    submitStatus.value = response?.error?.message || '送出失敗,請稍後再試'
   } finally {
     submitting.value = false
   }
@@ -267,7 +208,7 @@ onMounted(async () => {
             <span v-else>已同步</span>
           </p>
           <p class="mt-1 text-[11px] text-ink/60">
-            {{ apiConfigured ? 'GAS API' : '本機示意' }}
+            GAS API
           </p>
         </div>
       </div>
@@ -346,7 +287,7 @@ onMounted(async () => {
         </span>
       </div>
 
-      <div v-if="syncing && apiConfigured" class="mt-4 rounded-menu border border-cocoa/10 bg-fog/60 p-4">
+      <div v-if="syncing" class="mt-4 rounded-menu border border-cocoa/10 bg-fog/60 p-4">
         <p class="text-xs font-semibold tracking-[0.24em] text-ink/55">SYNC</p>
         <div class="mt-3 flex items-start gap-3">
           <span class="mt-0.5 h-4 w-4 rounded-full border-2 border-cocoa/25 border-t-cocoa animate-spin"></span>

@@ -24,32 +24,13 @@ const isLoggedIn = computed(() => {
   return true
 })
 
-const mockSessions = [
-  { orderSessionId: 'OS2026-01-29T10:30:00', storeType: 'drink' },
-  { orderSessionId: 'OS2026-01-29T12:00:00', storeType: 'meal' }
-]
-
-const mockStats = {
-  ordersByUser: [
-    { userName: '王小明', totalAmount: 120, orders: [{ productName: '焙茶拿鐵', price: 65 }, { productName: '桂花青茶', price: 55 }] }
-  ],
-  ordersByProduct: [
-    { productName: '焙茶拿鐵', count: 2, totalAmount: 130 },
-    { productName: '桂花青茶', count: 1, totalAmount: 55 }
-  ],
-  grandTotal: 185,
-  orderCount: 3
-}
-
 const activeList = computed(() => {
   return statsMode.value === 'user' ? statsData.value.ordersByUser : statsData.value.ordersByProduct
 })
 
 async function loadSessions() {
   if (!apiConfigured) {
-    sessions.value = mockSessions
-    selectedSessionId.value = sessions.value[0]?.orderSessionId || ''
-    statsData.value = mockStats
+    errorMessage.value = '請設定 VITE_API_BASE_URL 環境變數'
     return
   }
   if (!isLoggedIn.value) {
@@ -82,7 +63,7 @@ async function loadStats() {
     return
   }
   if (!apiConfigured) {
-    statsData.value = mockStats
+    errorMessage.value = '請設定 VITE_API_BASE_URL 環境變數'
     return
   }
   if (!isLoggedIn.value) {
@@ -125,7 +106,7 @@ onMounted(async () => {
           </p>
         </div>
         <div class="text-right text-xs text-ink/60">
-          <p>{{ apiConfigured ? 'GAS API' : '未設定 API' }}</p>
+          <p>GAS API</p>
           <p>狀態：{{ isLoggedIn ? '已登入' : '未登入' }}</p>
         </div>
       </div>
@@ -149,7 +130,7 @@ onMounted(async () => {
             {{ session.orderSessionId }} · {{ session.storeType?.toUpperCase() || 'SESSION' }}
           </option>
         </select>
-        <span v-if="loadingSessions && apiConfigured" class="inline-flex items-center gap-2 text-xs font-semibold text-ink/60">
+        <span v-if="loadingSessions" class="inline-flex items-center gap-2 text-xs font-semibold text-ink/60">
           <span class="h-3.5 w-3.5 rounded-full border-2 border-cocoa/25 border-t-cocoa animate-spin"></span>
           讀取場次中
         </span>
@@ -184,7 +165,7 @@ onMounted(async () => {
 
       <p v-if="errorMessage && isLoggedIn" class="mt-4 text-sm font-semibold text-cocoa">{{ errorMessage }}</p>
 
-      <div v-if="isLoggedIn || !apiConfigured" class="mt-5 grid gap-3 sm:grid-cols-3">
+      <div v-if="isLoggedIn" class="mt-5 grid gap-3 sm:grid-cols-3">
           <div class="rounded-menu border border-cocoa/10 bg-fog/60 p-4">
             <p class="mt-2 text-lg font-bold text-ink">{{ loading ? '—' : statsData.orderCount }}</p>
             <p class="mt-1 text-xs text-ink/65">訂單數</p>
@@ -200,7 +181,7 @@ onMounted(async () => {
         </div>
     </div>
 
-    <div v-if="isLoggedIn || !apiConfigured" class="rounded-menu border border-cocoa/10 bg-paper/80 p-5 shadow-paper">
+      <div v-if="isLoggedIn" class="rounded-menu border border-cocoa/10 bg-paper/80 p-5 shadow-paper">
       <h3 class="font-display text-xl text-cocoa">
         {{ statsMode === 'user' ? '人員統計' : '品項統計' }}
       </h3>

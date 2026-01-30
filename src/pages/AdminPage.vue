@@ -73,7 +73,7 @@ function logout() {
 async function loadStores() {
   if (!apiConfigured) {
     stores.value = []
-    storeListStatus.value = 'API 尚未設定，無法載入店家。'
+    storeListStatus.value = '請設定 VITE_API_BASE_URL 環境變數'
     return
   }
   if (!isLoggedIn.value) {
@@ -113,7 +113,7 @@ async function loadStores() {
 
 async function login() {
   if (!apiConfigured) {
-    statusMessage.value = 'API 尚未設定，無法登入。'
+    statusMessage.value = '請設定 VITE_API_BASE_URL 環境變數'
     return
   }
   loginLoading.value = true
@@ -264,7 +264,7 @@ watch(
           </p>
         </div>
         <div class="text-right text-xs text-ink/60">
-          <p>{{ apiConfigured ? 'GAS API' : '未設定 API' }}</p>
+          <p>GAS API</p>
           <p>狀態：{{ isLoggedIn ? '已登入' : '未登入' }}</p>
         </div>
       </div>
