@@ -184,6 +184,7 @@ watch(sessions, () => {
 
 onMounted(async () => {
   await loadSessions()
+  await loadProducts()
 })
 </script>
 
