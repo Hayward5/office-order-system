@@ -41,7 +41,10 @@ function iconPath(name) {
                 飢餓同事 HungryColleagues
               </h1>
               <p class="mt-3 max-w-[54ch] text-sm leading-relaxed text-ink/80">
-                今天的會議可以延，但飲料和下午茶不行 / 認真工作之前，先認真點餐
+                會議可以延，但飲料和下午茶不行
+              </p>
+              <p class="mt-3 max-w-[54ch] text-sm leading-relaxed text-ink/80">
+                認真工作之前，先認真點餐
               </p>
             </div>
             <div class="hidden sm:block">
@@ -60,7 +63,7 @@ function iconPath(name) {
           </div>
           <div class="hidden sm:flex items-center gap-2">
             <span class="h-[1px] w-10 bg-cocoa/20"></span>
-            <span class="text-xs tracking-[0.25em] text-ink/50">HASH ROUTER</span>
+            <span class="text-xs tracking-[0.25em] text-ink/50">下午茶，是續命不是放縱</span>
           </div>
         </div>
       </header>
