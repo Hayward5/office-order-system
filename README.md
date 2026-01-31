@@ -23,9 +23,6 @@
 - ✅ GitHub Actions 自動部署（push to main → 自動 build + deploy）
 - ✅ GitHub Pages 上線（靜態資產、hash 路由、API 連接皆正常）
 
-尚待完成：
-- 若要正式上線：將測試資料替換為正式店家/品項，必要時清理 Orders/CurrentOrder
-
 ---
 
 ## 最新完成與驗證（2026-01-28）
