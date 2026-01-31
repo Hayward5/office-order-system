@@ -102,27 +102,40 @@ function handleOpenOrder_(params) {
     return jsonResponse_(buildError_('STORE_TYPE_MISMATCH', 'storeType does not match store.'))
   }
 
-  if (isStoreTypeOpen_(storeType)) {
-    return jsonResponse_(buildError_('SESSION_ALREADY_OPEN', 'An order session is already open.'))
+  const lock = LockService.getScriptLock()
+  if (!lock.tryLock(30000)) {
+    return jsonResponse_(buildError_('LOCK_TIMEOUT', 'System busy, please retry.'))
   }
 
-  const orderSessionId = generateOrderSessionId_(storeType)
-  const currentSheet = getSpreadsheet_().getSheetByName('CurrentOrder')
-  appendRowWithHeaders_(currentSheet, {
-    OrderSessionID: orderSessionId,
-    StoreType: storeType,
-    StoreID: storeId,
-    Status: 'open',
-    CreatedBy: adminName,
-    CreatedAt: isoNow_(),
-    ClosedAt: ''
-  })
+  try {
+    if (isStoreTypeOpen_(storeType)) {
+      return jsonResponse_(buildError_('SESSION_ALREADY_OPEN', 'An order session is already open.'))
+    }
 
-  return jsonResponse_({
-    success: true,
-    orderSessionId: orderSessionId,
-    message: 'Order session opened.'
-  })
+    const orderSessionId = generateOrderSessionId_(storeType)
+    if (!orderSessionId) {
+      return jsonResponse_(buildError_('SESSION_LIMIT_REACHED', 'Daily session limit reached.'))
+    }
+
+    const currentSheet = getSpreadsheet_().getSheetByName('CurrentOrder')
+    appendRowWithHeaders_(currentSheet, {
+      OrderSessionID: orderSessionId,
+      StoreType: storeType,
+      StoreID: storeId,
+      Status: 'open',
+      CreatedBy: adminName,
+      CreatedAt: isoNow_(),
+      ClosedAt: ''
+    })
+
+    return jsonResponse_({
+      success: true,
+      orderSessionId: orderSessionId,
+      message: 'Order session opened.'
+    })
+  } finally {
+    lock.releaseLock()
+  }
 }
 
 function handleCloseOrder_(params) {
@@ -396,8 +409,36 @@ function upsertRecords_(sheet, idKey, expectedHeaders, records) {
 }
 
 function generateOrderSessionId_(storeType) {
-  const stamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd'T'HH:mm:ss")
-  return 'OS' + stamp
+  const zone = Session.getScriptTimeZone()
+  const now = new Date()
+  const dateStr = Utilities.formatDate(now, zone, 'yyyyMMdd')
+
+  let typeCode = ''
+  if (storeType === 'drink') {
+    typeCode = 'D'
+  } else if (storeType === 'meal') {
+    typeCode = 'M'
+  } else {
+    return ''
+  }
+
+  const sessions = getCurrentOrders_()
+  const todayPrefix = dateStr + '-'
+  const todayCount = sessions.filter((session) => {
+    const sid = normalizeString_(session.OrderSessionID)
+    if (!sid.startsWith(todayPrefix)) {
+      return false
+    }
+    return /^\d{8}-\d{2}-[DM]$/.test(sid)
+  }).length
+
+  const nextNum = todayCount + 1
+  if (nextNum > 99) {
+    return ''
+  }
+
+  const seq = String(nextNum).padStart(2, '0')
+  return dateStr + '-' + seq + '-' + typeCode
 }
 
 function isStoreTypeOpen_(storeType) {
